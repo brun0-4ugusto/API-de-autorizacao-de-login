@@ -2,9 +2,7 @@ const database = require("../models");
 const jwt = require("jsonwebtoken");
 
 class UsuarioController {
-    static oi(req,res){
-        res.status(200).send("oi");
-    }
+   
     static criaTokenJWT(email) {
         const payload = {
             email: email,

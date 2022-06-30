@@ -4,6 +4,7 @@ const LocalStrategy = require("passport-local").Strategy;
 const BearerStrategy = require("passport-http-bearer").Strategy;
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const NodeCache = require("node-cache");
 
 function verificaUsuario(usuario) {
     if (!usuario) {
@@ -18,18 +19,22 @@ async function verificaSenha(senha, senhaHash) {
     }
 }
 
-/* passport.use(
-    new BearerStrategy(async (token, done) => {
-        try {
-            const payload = jwt.verify(token, "senha-secreta");
-            const usuario = await UsuarioController.buscaPorUsuario(payload.email);
-            done(null, usuario);
-        } catch (error) {
-            done(error)
-        }
-    })
-); */
+function tentativasLogin(cache, email) {
+    const jaExisteCache = cache.get(email);
 
+    if (jaExisteCache == undefined) {
+        cache.set(email, 1, 30);
+
+        return;
+    }
+    if (cache.get(email) > 2) {
+        throw new Error("Você atingiu o limite máximo de tentativas");
+    }
+    const tentativas = cache.get(email) + 1;
+    cache.set(email, tentativas, 30);
+}
+
+const cacheLogin = new NodeCache();
 passport.use(
     new LocalStrategy(
         {
@@ -41,6 +46,7 @@ passport.use(
             try {
                 const usuario = await UsuarioController.buscaPorUsuario(email);
                 verificaUsuario(usuario);
+                tentativasLogin(cacheLogin, email);
                 await verificaSenha(senha, usuario.senha);
                 done(null, usuario);
             } catch (error) {
